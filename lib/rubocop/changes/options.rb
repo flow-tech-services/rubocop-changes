@@ -5,7 +5,7 @@ require 'optparse'
 module Rubocop
   module Changes
     class Options
-      Options = Struct.new(:format, :quiet, :commit, :auto_correct)
+      Options = Struct.new(:format, :quiet, :commit, :auto_correct, :branch_default)
 
       def initialize
         @args = Options.new(:simple, false, nil, false) # Defaults
@@ -20,7 +20,7 @@ module Rubocop
           parse_quiet!(opts)
           parse_auto_correct!(opts)
           parse_help!(opts)
-          parse_version!(opts)
+          parse_branch_default!(opts)
         end.parse!
 
         args
@@ -35,6 +35,16 @@ module Rubocop
 
         formatters.keys.map do |key|
           key.gsub(/[\[\]]/, '').to_sym
+        end
+      end
+
+      def parse_branch_default!(opts)
+        opts.on(
+          '-bd',
+          '--branch_default=BRANCH_DEFAULT',
+          'Select the default branch to compare'
+        ) do |t|
+          args.branch_default = t
         end
       end
 
