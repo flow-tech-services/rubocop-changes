@@ -13,11 +13,12 @@ module Rubocop
     class UnknownForkPointError < StandardError; end
 
     class Checker
-      def initialize(format:, quiet:, commit:, auto_correct:)
+      def initialize(format:, quiet:, commit:, auto_correct:, default_branch: nil)
         @format = format
         @quiet = quiet
         @commit = commit
         @auto_correct = auto_correct
+        @default_branch = default_branch
       end
 
       def run
@@ -38,6 +39,7 @@ module Rubocop
       end
 
       def command
+        return "git merge-base HEAD #{@default_branch}" if @default_branch
         return 'git merge-base HEAD origin/master' unless commit
 
         "git log -n 1 --pretty=format:\"%h\" #{commit}"
@@ -61,9 +63,7 @@ module Rubocop
 
       def rubocop
         shell_command = [
-          'rubocop',
-          exclussion_modifier,
-          formatter_modifier,
+          'rubocop', exclussion_modifier, formatter_modifier,
           auto_correct_modifier
         ].compact.join(' ')
 
