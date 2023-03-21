@@ -10,18 +10,21 @@ require 'rubocop/changes/shell'
 module Rubocop
   module Changes
     class UnknownFormat < StandardError; end
+    class UnknownBaseBranchError < StandardError; end
     class UnknownForkPointError < StandardError; end
 
     class Checker
-      def initialize(format:, quiet:, commit:, auto_correct:, branch_default: nil)
+      def initialize(format:, quiet:, commit:, auto_correct:, branch_default: nil, base_branch:)
         @format = format
         @quiet = quiet
         @commit = commit
         @auto_correct = auto_correct
         @branch_default = branch_default
+        @base_branch = base_branch
       end
 
       def run
+        raise UnknownBaseBranchError if base_branch.empty?
         raise UnknownForkPointError if fork_point.empty?
         raise UnknownFormat if formatter_klass.nil?
 
@@ -32,7 +35,16 @@ module Rubocop
 
       private
 
-      attr_reader :format, :quiet, :commit, :auto_correct
+      attr_reader :format, :quiet, :commit, :auto_correct, :base_branch
+
+      def path_prefix
+        return @path_prefix if defined?(@path_prefix)
+        @path_prefix = local_git_root_path && Dir.pwd.gsub(local_git_root_path, '')[1..-1]
+      end
+
+      def local_git_root_path
+        @local_git_root_path ||= Shell.run("git rev-parse --show-toplevel")
+      end
 
       def fork_point
         @fork_point ||= Shell.run(command)
@@ -41,6 +53,7 @@ module Rubocop
       def command
         return "git merge-base HEAD #{@branch_default}" if @branch_default
         return 'git merge-base HEAD origin/master' unless commit
+        return "git merge-base HEAD origin/#{base_branch}" unless commit
 
         "git log -n 1 --pretty=format:\"%h\" #{commit}"
       end
@@ -58,7 +71,13 @@ module Rubocop
       end
 
       def ruby_changed_files
-        changed_files.select { |changed_file| changed_file =~ /.rb$/ }
+        changed_files.select { |changed_file| changed_file =~ /\.rb$/ }
+      end
+
+      def ruby_changed_files_from_pwd
+        ruby_changed_files.map do |path|
+          from_pwd_path(path)
+        end
       end
 
       def rubocop
@@ -75,11 +94,11 @@ module Rubocop
       end
 
       def formatter_modifier
-        "-f j #{ruby_changed_files.join(' ')}"
+        "-f j #{ruby_changed_files_from_pwd.join(' ')}"
       end
 
       def auto_correct_modifier
-        '-a' if @auto_correct
+        '-A' if @auto_correct
       end
 
       def rubocop_json
@@ -88,7 +107,7 @@ module Rubocop
 
       def checks
         @checks ||= ruby_changed_files.map do |file|
-          analysis = rubocop_json.files.find { |item| item.path == file }
+          analysis = rubocop_json.files.find { |item| item.path == from_pwd_path(file) }
           patch = patches.find { |item| item.file == file }
 
           next unless analysis
@@ -120,7 +139,9 @@ module Rubocop
       end
 
       def formatter_klass
-        @formatter_klass ||= formatters[format]
+        return formatters[format] unless formatters[format].is_a? String
+
+        Kernel.const_get("RuboCop::Formatter::#{formatters[format]}")
       end
 
       def formatters
@@ -144,6 +165,14 @@ module Rubocop
         end
 
         formatter.file_finished(check.path, offenses)
+      end
+
+      def from_pwd_path(path)
+        if path_prefix
+          path.gsub(/^#{path_prefix}\//, '')
+        else
+          path
+        end
       end
     end
   end

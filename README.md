@@ -1,7 +1,7 @@
 # Rubocop::Changes
 
 [![Gem Version](https://img.shields.io/gem/v/rubocop-changes)](https://rubygems.org/gems/rubocop-changes)
-[![Build Status](https://img.shields.io/travis/com/fcsonline/rubocop-changes/master)](https://travis-ci.com/fcsonline/rubocop-changes)
+[![Build Status](https://github.com/fcsonline/rubocop-changes/actions/workflows/ci.yml/badge.svg)](https://github.com/fcsonline/rubocop-changes/actions/workflows/ci.yml)
 
 `rubocop-changes` runs rubocop and shows only the offenses you introduced since
 the fork point of your git branch. Will not complain about existing offenses in
@@ -32,7 +32,9 @@ Or install it yourself as:
 
 ## Usage
 
-    $ bundle exec rubocop-changes
+    $ bundle exec rubocop-changes -b master
+    
+When you run `rubocop-changes`, you have to specify which is your base branch with `-b` argument. By default is `main`. If you want to avoid to pass this argument everytime you execute this command, you can also set the `RUBOCOP_CHANGES_BASE_BRANCH` environment variable.
 
 ## Other gems
 
