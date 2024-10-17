@@ -3,6 +3,7 @@
 require 'git_diff_parser'
 require 'rubocop'
 require 'json'
+require 'ostruct'
 
 require 'rubocop/changes/check'
 require 'rubocop/changes/shell'
